@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ._chgnet import CHGNet
+from ._chgnet import CHGNet, CHGNet_LR
 from ._core import MatGLModel
 from ._m3gnet import M3GNet
 from ._megnet import MEGNet

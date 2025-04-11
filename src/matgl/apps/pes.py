@@ -32,6 +32,7 @@ class Potential(nn.Module, IOMixIn):
         calc_stresses: bool = True,
         calc_hessian: bool = False,
         calc_magmom: bool = False,
+        calc_latent_charge: bool = False,
         calc_repuls: bool = False,
         zbl_trainable: bool = False,
         debug_mode: bool = False,
@@ -57,6 +58,7 @@ class Potential(nn.Module, IOMixIn):
         self.calc_forces = calc_forces
         self.calc_stresses = calc_stresses
         self.calc_hessian = calc_hessian
+        self.calc_latent_charge = calc_latent_charge
         self.calc_magmom = calc_magmom
         self.element_refs: AtomRef | None
         self.debug_mode = debug_mode
@@ -108,12 +110,24 @@ class Potential(nn.Module, IOMixIn):
         g.ndata["pos"] = (
             g.ndata["frac_coords"].unsqueeze(dim=-1) * torch.repeat_interleave(lattice, g.batch_num_nodes(), dim=0)
         ).sum(dim=1)
+
+        ####### process the latent charge #######
+
+        # print(g.ndata.keys()    )
+        
+        ####### process the forces#######
         if self.calc_forces:
             g.ndata["pos"].requires_grad_(True)
 
         total_energies = self.model(g=g, state_attr=state_attr, l_g=l_g)
 
         total_energies = self.data_std * total_energies + self.data_mean
+
+        if self.calc_latent_charge:
+            latent_charge = g.ndata["latent_charge"]
+
+            print("latent charge:")
+            print(latent_charge)
 
         if self.calc_repuls:
             total_energies += self.repuls(self.model.element_types, g)
@@ -158,10 +172,16 @@ class Potential(nn.Module, IOMixIn):
             sts = [i * j for i, j in zip(sts, scale, strict=False)] if sts.dim() == 3 else [sts * scale]  # type:ignore[assignment]
             stresses = torch.cat(sts)  # type:ignore[call-overload]
 
+
+        # print("before return, g.ndata.keys():", g.ndata.keys())
+
         if self.debug_mode:
             return total_energies, grads[0], grads[1]
 
         if self.calc_magmom:
             return total_energies, forces, stresses, hessian, g.ndata["magmom"]
+        
+        if self.calc_latent_charge:
+            return total_energies, forces, stresses, hessian, g.ndata["latent_charge"]
 
         return total_energies, forces, stresses, hessian
