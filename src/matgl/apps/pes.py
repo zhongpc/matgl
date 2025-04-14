@@ -20,6 +20,29 @@ if TYPE_CHECKING:
     import numpy as np
 
 
+def create_batch_indices(cell: torch.Tensor, r: torch.Tensor) -> torch.Tensor:
+    """
+    Create batch indices for atoms based on cell and positions.
+    
+    Args:
+        cell: Cell tensor of shape [batch_size, 3, 3]
+        r: Position tensor of shape [n_atoms, 3]
+    
+    Returns:
+        Batch indices tensor of shape [n_atoms]
+    """
+    batch_size = cell.shape[0]
+    n_atoms = r.shape[0]
+    
+    # Calculate atoms per structure
+    atoms_per_structure = n_atoms // batch_size
+    
+    # Create batch indices
+    batch_indices = torch.arange(batch_size, device=r.device)
+    batch_indices = batch_indices.repeat_interleave(atoms_per_structure)
+    
+    return batch_indices
+
 class Potential(nn.Module, IOMixIn):
     """A class representing an interatomic potential."""
 
@@ -133,18 +156,29 @@ class Potential(nn.Module, IOMixIn):
 
         total_energies = self.model(g=g, state_attr=state_attr, l_g=l_g)
         print("total_energies (SR):", total_energies)
+        batch = create_batch_indices(lattice, g.ndata["pos"])
+        print("batch shape:", batch.shape)
+        print("batch:", batch)
         if self.calc_ewald:
             ewald_E = self.ewald(q = g.ndata["latent_charge"], 
                        r = g.ndata["pos"], 
                        cell = lattice, 
-                       batch = None)
+                       batch = batch
+                       )
+            
             print("ewald_E shape:", ewald_E.shape)
+            
+            ewald_E = torch.squeeze(ewald_E) # .unsqueeze(-1)
             print("ewald_E:", ewald_E)
+            print("ewald_E shape:", ewald_E.shape)
+            
             print("total_energies shape:", total_energies.shape)
-            if total_energies.shape != ewald_E.shape:
-                total_energies = total_energies.unsqueeze(-1)
-            print("total_energies shape:", total_energies.shape)
+            # if total_energies.shape != ewald_E.shape:
+            #     total_energies = total_energies.unsqueeze(-1)
+            # print("total_energies shape:", total_energies.shape)
+
             total_energies += ewald_E
+            total_energies = torch.squeeze(total_energies) # .squeeze(-1)
 
             print("total_energies (SR+Ewald):", total_energies)
 
