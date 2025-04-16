@@ -755,12 +755,15 @@ class CHGNet_LR(MatGLModel):
 
         # site wise target readout
         g.ndata["magmom"] = self.magmom_readout(atom_features)
-        g.ndata["latent_charge"] = self.latent_charge_readout(atom_features)
-
+        
         # last atom graph message passing layer
         atom_features, bond_features, state_attr = self.atom_graph_layers[-1](
             g, atom_features, bond_features, state_attr, atom_bond_weights, bond_bond_weights
         )
+
+        # site wise latent charge readout
+        g.ndata["latent_charge"] = self.latent_charge_readout(atom_features)
+
 
         # really only needed if using the readout modules in _readout.py
         # g.ndata["node_feat"] = atom_features

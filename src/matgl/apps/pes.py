@@ -19,30 +19,6 @@ if TYPE_CHECKING:
     import dgl
     import numpy as np
 
-
-def create_batch_indices(cell: torch.Tensor, r: torch.Tensor) -> torch.Tensor:
-    """
-    Create batch indices for atoms based on cell and positions.
-    
-    Args:
-        cell: Cell tensor of shape [batch_size, 3, 3]
-        r: Position tensor of shape [n_atoms, 3]
-    
-    Returns:
-        Batch indices tensor of shape [n_atoms]
-    """
-    batch_size = cell.shape[0]
-    n_atoms = r.shape[0]
-    
-    # Calculate atoms per structure
-    atoms_per_structure = n_atoms // batch_size
-    
-    # Create batch indices
-    batch_indices = torch.arange(batch_size, device=r.device)
-    batch_indices = batch_indices.repeat_interleave(atoms_per_structure)
-    
-    return batch_indices
-
 class Potential(nn.Module, IOMixIn):
     """A class representing an interatomic potential."""
 
@@ -143,6 +119,7 @@ class Potential(nn.Module, IOMixIn):
         if self.calc_stresses:
             st.requires_grad_(True)
         lattice = lat @ (torch.eye(3, device=lat.device) + st)
+        g.ndata["batch"] = torch.repeat_interleave(torch.arange(g.batch_size, device=lat.device), g.batch_num_nodes(), dim=0)
         g.edata["lattice"] = torch.repeat_interleave(lattice, g.batch_num_edges(), dim=0)
         g.edata["pbc_offshift"] = (g.edata["pbc_offset"].unsqueeze(dim=-1) * g.edata["lattice"]).sum(dim=1)
         g.ndata["pos"] = (
@@ -155,14 +132,23 @@ class Potential(nn.Module, IOMixIn):
 
         total_energies = self.model(g=g, state_attr=state_attr, l_g=l_g)
         # print("total_energies (SR):", total_energies)
-        batch = create_batch_indices(lattice, g.ndata["pos"])
-        # print("batch shape:", batch.shape)
+        # batch = create_batch_indices(lattice, g.ndata["pos"])
+
+        # batch_num_nodes = g._batch_num_nodes['_N']
+        # print("batch_num_nodes shape:", batch_num_nodes.shape)
+
+
+        # print("g.ndata['latent_charge'] shape:", g.ndata["latent_charge"].shape)
+        # print("g.ndata['pos'] shape:", g.ndata["pos"].shape)
+
+        # print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
         # print("batch:", batch)
         if self.calc_ewald:
             ewald_E = self.ewald(q = g.ndata["latent_charge"], 
                        r = g.ndata["pos"], 
                        cell = lattice, 
-                       batch = batch
+                       batch = g.ndata["batch"]
                        )
             
             # print("ewald_E shape:", ewald_E.shape)
