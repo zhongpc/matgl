@@ -60,6 +60,8 @@ class Potential(nn.Module, IOMixIn):
         calc_magmom: bool = False,
         calc_repuls: bool = False,
         calc_ewald: bool = False,
+        les_sigma: float = 1.0,
+        les_dl: float = 2.0,
         zbl_trainable: bool = False,
         debug_mode: bool = False,
     ):
@@ -89,6 +91,8 @@ class Potential(nn.Module, IOMixIn):
         self.element_refs: AtomRef | None
         self.debug_mode = debug_mode
         self.calc_repuls = calc_repuls
+        self.les_sigma = les_sigma
+        self.les_dl = les_dl
 
         if calc_repuls:
             self.repuls = NuclearRepulsion(self.model.cutoff, trainable=zbl_trainable)
@@ -113,15 +117,10 @@ class Potential(nn.Module, IOMixIn):
         if self.calc_ewald:
 
             self.ewald = Ewald(
-                sigma=1.0,  # width of the Gaussian on each atom
-                dl=2.0,  # grid resolution
+                sigma=self.les_sigma,  # width of the Gaussian on each atom
+                dl=self.les_dl,  # grid resolution
             )
 
-            # self.ewald = EwaldPotential(
-            #     dl=2.0,  # grid resolution
-            #     sigma=1.0,  # width of the Gaussian on each atom
-            #     exponent=1, # default is for electrostattics with p=1, we can do London dispersion with p=6
-            # )
 
     def forward(
         self,
@@ -155,10 +154,10 @@ class Potential(nn.Module, IOMixIn):
             g.ndata["pos"].requires_grad_(True)
 
         total_energies = self.model(g=g, state_attr=state_attr, l_g=l_g)
-        print("total_energies (SR):", total_energies)
+        # print("total_energies (SR):", total_energies)
         batch = create_batch_indices(lattice, g.ndata["pos"])
-        print("batch shape:", batch.shape)
-        print("batch:", batch)
+        # print("batch shape:", batch.shape)
+        # print("batch:", batch)
         if self.calc_ewald:
             ewald_E = self.ewald(q = g.ndata["latent_charge"], 
                        r = g.ndata["pos"], 
@@ -166,21 +165,21 @@ class Potential(nn.Module, IOMixIn):
                        batch = batch
                        )
             
-            print("ewald_E shape:", ewald_E.shape)
+            # print("ewald_E shape:", ewald_E.shape)
             
-            ewald_E = torch.squeeze(ewald_E) # .unsqueeze(-1)
-            print("ewald_E:", ewald_E)
-            print("ewald_E shape:", ewald_E.shape)
-            
-            print("total_energies shape:", total_energies.shape)
+            ewald_E = torch.squeeze(ewald_E)
+            # print("ewald_E:", ewald_E)
+            # print("ewald_E shape:", ewald_E.shape)
+            # print("total_energies shape:", total_energies.shape)
+
             # if total_energies.shape != ewald_E.shape:
             #     total_energies = total_energies.unsqueeze(-1)
             # print("total_energies shape:", total_energies.shape)
 
             total_energies += ewald_E
-            total_energies = torch.squeeze(total_energies) # .squeeze(-1)
+            # total_energies = torch.squeeze(total_energies) # .squeeze(-1)
 
-            print("total_energies (SR+Ewald):", total_energies)
+            # print("total_energies (SR+Ewald):", total_energies)
 
         total_energies = self.data_std * total_energies + self.data_mean
 
