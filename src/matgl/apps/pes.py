@@ -36,10 +36,14 @@ class Potential(nn.Module, IOMixIn):
         calc_magmom: bool = False,
         calc_repuls: bool = False,
         calc_ewald: bool = False,
+        calc_BEC: bool = False,
         les_sigma: float = 1.0,
         les_dl: float = 2.0,
+        les_remove_mean: bool = True,
+        les_epsilon_factor: float = 1.0,
         zbl_trainable: bool = False,
         debug_mode: bool = False,
+        return_charge: bool = False,
     ):
         """Initialize Potential from a model and elemental references.
 
@@ -63,12 +67,16 @@ class Potential(nn.Module, IOMixIn):
         self.calc_stresses = calc_stresses
         self.calc_hessian = calc_hessian
         self.calc_ewald = calc_ewald
+        self.calc_BEC = calc_BEC
         self.calc_magmom = calc_magmom
         self.element_refs: AtomRef | None
         self.debug_mode = debug_mode
         self.calc_repuls = calc_repuls
         self.les_sigma = les_sigma
         self.les_dl = les_dl
+        self.les_remove_mean = les_remove_mean
+        self.les_epsilon_factor = les_epsilon_factor
+        self.return_charge = return_charge
 
         if calc_repuls:
             self.repuls = NuclearRepulsion(self.model.cutoff, trainable=zbl_trainable)
@@ -90,13 +98,33 @@ class Potential(nn.Module, IOMixIn):
         self.register_buffer("data_mean", data_mean)
         self.register_buffer("data_std", data_std)
 
-        if self.calc_ewald:
-
+        if self.calc_BEC:
+            self.calc_ewald = True
             self.ewald = Ewald(
                 sigma=self.les_sigma,  # width of the Gaussian on each atom
                 dl=self.les_dl,  # grid resolution
             )
 
+            self.bec = BEC(
+                remove_mean=self.les_remove_mean,
+                epsilon_factor=self.les_epsilon_factor,
+            )
+
+        elif self.calc_ewald == True and self.calc_BEC == False:
+            # self.calc_ewald = True
+            self.ewald = Ewald(
+                sigma=self.les_sigma,  # width of the Gaussian on each atom
+                dl=self.les_dl,  # grid resolution
+            )
+
+
+        # if self.calc_ewald:
+        #     self.ewald = Ewald(
+        #         sigma=self.les_sigma,  # width of the Gaussian on each atom
+        #         dl=self.les_dl,  # grid resolution
+        #     )
+
+        
 
     def forward(
         self,
@@ -131,6 +159,8 @@ class Potential(nn.Module, IOMixIn):
             g.ndata["pos"].requires_grad_(True)
 
         total_energies = self.model(g=g, state_attr=state_attr, l_g=l_g)
+
+        # print(g.ndata.keys())
         # print("total_energies (SR):", total_energies)
         # batch = create_batch_indices(lattice, g.ndata["pos"])
 
@@ -212,13 +242,23 @@ class Potential(nn.Module, IOMixIn):
             sts = [i * j for i, j in zip(sts, scale, strict=False)] if sts.dim() == 3 else [sts * scale]  # type:ignore[assignment]
             stresses = torch.cat(sts)  # type:ignore[call-overload]
 
+
+        if self.calc_BEC:
+            bec = self.bec(
+                q = g.ndata["latent_charge"], 
+                r = g.ndata["pos"], 
+                cell = lattice,
+                batch = g.ndata["batch"]
+            )
+
+
         if self.debug_mode:
             return total_energies, grads[0], grads[1]
 
         if self.calc_magmom:
             return total_energies, forces, stresses, hessian, g.ndata["magmom"]
         
-        if self.calc_ewald:
-            return total_energies, forces, stresses, hessian, g.ndata["latent_charge"]
-
+        if self.return_charge:
+            return total_energies, forces, stresses, hessian, g.ndata["latent_charge"], bec
+    
         return total_energies, forces, stresses, hessian
