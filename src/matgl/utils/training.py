@@ -285,7 +285,7 @@ class PotentialLightningModule(MatglLightningModuleMixin, pl.LightningModule):
         sync_dist: bool = False,
         allow_missing_labels: bool = False,
         magmom_target: Literal["absolute", "symbreak"] | None = "absolute",
-        include_ewald: bool = False,
+        include_long_range: bool = False,
         **kwargs,
     ):
         """
@@ -341,7 +341,7 @@ class PotentialLightningModule(MatglLightningModuleMixin, pl.LightningModule):
             element_refs=element_refs,
             calc_stresses=stress_weight != 0,
             calc_magmom=magmom_weight != 0,
-            calc_ewald=include_ewald,
+            calc_BEC=include_long_range,
             data_std=self.data_std,
             data_mean=self.data_mean,
         )
