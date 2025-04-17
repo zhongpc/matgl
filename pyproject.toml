@@ -21,7 +21,7 @@ authors = [
 ]
 description = "MatGL is a framework for graph deep learning for materials science."
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10"
 keywords = [
     "materials",
     "interatomic potential",
@@ -50,12 +50,13 @@ classifiers = [
 ]
 dependencies = [
     "ase",
-    "dgl<=2.2.0; sys.platform != 'linux'",
+    "dgl<=2.1.0; sys.platform == 'win32'",
+    "dgl<=2.2.0; sys.platform == 'darwin'",
     "torch<=2.2.0; sys.platform != 'linux'",
     "torchdata<=0.7.1; sys.platform != 'linux'",
-    "dgl<=2.2.1; sys.platform == 'linux'",
-    "torch<=2.2.0; sys.platform == 'linux'",
-    "torchdata<=0.7.1; sys.platform == 'linux'",
+    "dgl<=2.4.0; sys.platform == 'linux'",
+    "torch<=2.4.0; sys.platform == 'linux'",
+    "torchdata<=0.8.0; sys.platform == 'linux'",
     "pymatgen",
     "lightning<=2.5.1",
     "pydantic",
@@ -65,20 +66,20 @@ dependencies = [
 ]
 version = "1.2.6"
 
-#[tool.uv.sources]
-#dgl = [
-#  { index = "dgl-cpu", marker = "sys_platform == 'linux'" },
-#    { index = "dgl-simple", marker = "sys_platform != 'linux'" },
-#]
-#
-#[[tool.uv.index]]
-#name = "dgl-cpu"
-#url = "https://data.dgl.ai/wheels/torch-2.4/repo.html"
-#format = "flat"
-#
-#[[tool.uv.index]]
-#name = "dgl-simple"
-#url = "https://pypi.org/simple/"
+[tool.uv.sources]
+dgl = [
+  { index = "dgl-linux", marker = "sys_platform == 'linux'" },
+  { index = "dgl-non-linux", marker = "sys_platform != 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "dgl-linux"
+url = "https://data.dgl.ai/wheels/torch-2.4/repo.html"
+format = "flat"
+
+[[tool.uv.index]]
+name = "dgl-non-linux"
+url = "https://pypi.org/simple/"
 
 [project.scripts]
 mgl = "matgl.cli:main"
@@ -163,8 +164,6 @@ lint.isort.required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"setup.py" = ["D"]
-"tasks.py" = ["D"]
 "tests/**/*" = ["D", "PERF"]
 "docs/**/*" = ["D"]
 "examples/**/*" = ["D"]
@@ -180,10 +179,6 @@ exclude = ['examples', 'tests']
 [[tool.mypy.overrides]]
 module = ["requests.*", "tabulate.*"]
 ignore_missing_imports = true
-
-[tool.codespell]
-ignore-words-list = "mater,te,nd,bu"
-check-filenames = true
 
 [tool.coverage.run]
 relative_files = true
