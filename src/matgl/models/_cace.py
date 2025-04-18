@@ -73,7 +73,7 @@ class CACE_LR(nn.Module):
         atom_embedding_random_seed: List[int] = [42, 42], 
         n_radial_basis: Optional[int] = None,
         avg_num_neighbors: float = 10.0,
-        device: torch.device = torch.device("cpu"),
+        # device: torch.device = torch.device("cuda"),
         timeit: bool = False,
         keep_node_features_A: bool = False,
         forward_features: List[str] = [],
@@ -209,7 +209,7 @@ class CACE_LR(nn.Module):
                 num_targets=num_targets,  # type: ignore
             )
         
-        self.device = device
+        # self.device = device
 
     def forward(
         self, 
@@ -221,7 +221,7 @@ class CACE_LR(nn.Module):
 
         n_nodes = g.ndata['pos'].shape[0]
         if g.ndata["batch"] == None:
-            batch_now = torch.zeros(n_nodes, dtype=torch.int64, device=self.device)
+            batch_now = torch.zeros(n_nodes, dtype=torch.int64, device=g.device)
         else:
             batch_now = g.ndata["batch"]
 
