@@ -11,7 +11,7 @@ from pymatgen.core.periodic_table import Element
 # Default set of elements supported by universal matgl models. Excludes radioactive and most artificial elements.
 DEFAULT_ELEMENTS = tuple(el.symbol for el in Element if el.symbol not in ["Po", "At", "Rn", "Fr", "Ra"] and el.Z < 95)
 
-DEFAULT_ATOMIC_NUMBERS = tuple(el.Z for el in Element if el.symbol not in ["Po", "At", "Rn", "Fr", "Ra"] and el.Z < 95)
+DEFAULT_ATOMIC_NUMBERS = tuple(el.Z for el in Element if el.Z < 95)
 
 
 # Default location of the cache for matgl, e.g., for storing downloaded models.

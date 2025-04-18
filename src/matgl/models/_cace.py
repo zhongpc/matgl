@@ -15,19 +15,17 @@ import torch
 from torch import nn
 
 import matgl
-from matgl.config import DEFAULT_ELEMENTS, DEFAULT_ATOMIC_NUMBERS
 from matgl.graph.compute import (
     compute_pair_vector_and_distance,
 )
 
 from matgl.layers import MLP, WeightedReadOut
 
+
 if TYPE_CHECKING:
     from matgl.graph.converters import GraphConverter
 
 logger = logging.getLogger(__file__)
-
-
 
 
 from matgl.cace.modules import (
@@ -52,10 +50,16 @@ from matgl.cace.modules import (
 from matgl.cace.tools import elementwise_multiply_3tensors, scatter_sum
 
 
+from pymatgen.core.periodic_table import Element
+DEFAULT_ELEMENTS = tuple(el.symbol for el in Element if el.Z < 95)
+DEFAULT_ATOMIC_NUMBERS = tuple(el.Z for el in Element if el.Z < 95)
+
+
 class CACE_LR(nn.Module):
 
     def __init__(
         self,
+        zs: List[int] = list(DEFAULT_ATOMIC_NUMBERS),
         element_types: tuple[str, ...] = DEFAULT_ELEMENTS,
         n_atom_basis: int = 3,
         n_rbf: int = 6,
@@ -100,7 +104,7 @@ class CACE_LR(nn.Module):
         super().__init__()
         self.element_types = element_types  # type: ignore
 
-        self.zs = list(DEFAULT_ATOMIC_NUMBERS)
+        self.zs = zs # list(DEFAULT_ATOMIC_NUMBERS)
         self.nz = len(self.zs) # number of elements
 
         self.n_atom_basis = n_atom_basis
@@ -230,7 +234,7 @@ class CACE_LR(nn.Module):
 
         # Embeddings
         ## code each node/element in one-hot way
-        node_one_hot = self.node_onehot(g.ndata['node_type'])
+        node_one_hot = self.node_onehot(g.ndata['node_type'] + 1) # +1 to account for the fact that the atomic number is 1-indexed
 
         ## embed to a different dimension
         node_embedded_sender = self.node_embedding_sender(node_one_hot)
@@ -331,18 +335,18 @@ class CACE_LR(nn.Module):
         else:
             node_feats_A_out = None
 
-        print("Before reshape", node_feats_out.shape)
+        # print("Before reshape", node_feats_out.shape)
         node_feats_out = node_feats_out.reshape(node_feats_out.shape[0], -1)
-        print("After reshape", node_feats_out.shape)
+        # print("After reshape", node_feats_out.shape)
         g.ndata["node_feat"] = node_feats_out
 
         g.ndata["latent_charge"] =  self.latent_charge_readout(g)
         g.ndata["atomic_properties"] = self.final_layer(g)
 
         
-        print(node_feats_out)
+        # print(node_feats_out)
 
-        print(g.ndata["node_feat"].shape)
+        # print(g.ndata["node_feat"].shape)
 
         try:
             displacement = g.ndata["displacement"]
