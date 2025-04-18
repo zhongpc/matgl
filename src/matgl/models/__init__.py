@@ -9,3 +9,4 @@ from ._megnet import MEGNet
 from ._so3net import SO3Net
 from ._tensornet import TensorNet, TensorNet_LR
 from ._wrappers import TransformedTargetModel
+from ._cace import CACE_LR
