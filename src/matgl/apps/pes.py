@@ -37,7 +37,7 @@ class Potential(nn.Module, IOMixIn):
         calc_repuls: bool = False,
         calc_BEC: bool = False,
         les_sigma: float = 1.0,
-        les_dl: float = 2.0,
+        les_dl: float = 1.0,
         les_remove_mean: bool = True,
         les_epsilon_factor: float = 1.0,
         zbl_trainable: bool = False,

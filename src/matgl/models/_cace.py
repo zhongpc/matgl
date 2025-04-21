@@ -173,6 +173,9 @@ class CACE_LR(nn.Module):
 
         # for message passing layers
         self.num_message_passing = num_message_passing
+        n_angular_sym = 1 + sum([len(self.symmetrizer.vec_dict_allnu[nu]) for nu in range(2, self.max_nu + 1)])
+        flat_dim = self.n_radial_basis * n_angular_sym * self.n_edge_channels * (self.num_message_passing + 1)
+
         self.message_passing_list = nn.ModuleList([
             nn.ModuleList([
                 NodeMemory(
@@ -192,14 +195,18 @@ class CACE_LR(nn.Module):
 
                 MessageBchi(
                     lxlylz_index = self.angular_basis.get_lxlylz_index(),
+                    n_in = self.n_radial_basis * n_angular_sym * self.n_edge_channels,
+                    channel_dim = self.n_edge_channels,
+                    num_message_passing = self.num_message_passing,
+                    # n_out = self.n_edge_channels,
                     **args_message_passing["Bchi"] if "Bchi" in args_message_passing else {}
                     ) if "Bchi" in type_message_passing else None,
             ]) 
             for _ in range(self.num_message_passing)
             ])
         
-        n_angular_sym = 1 + sum([len(self.symmetrizer.vec_dict_allnu[nu]) for nu in range(2, self.max_nu + 1)])
-        flat_dim = self.n_radial_basis * n_angular_sym * self.n_edge_channels * (self.num_message_passing + 1)
+        
+        
         
         
         self.final_layer = WeightedReadOut(
