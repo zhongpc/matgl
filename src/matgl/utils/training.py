@@ -336,13 +336,14 @@ class PotentialLightningModule(MatglLightningModuleMixin, pl.LightningModule):
         self.decay_steps = decay_steps
         self.decay_alpha = decay_alpha
         self.include_line_graph = include_line_graph
+        self.include_long_range = include_long_range
 
         self.model = Potential(
             model=model,
             element_refs=element_refs,
             calc_stresses=stress_weight != 0,
             calc_magmom=magmom_weight != 0,
-            calc_BEC=include_long_range,
+            calc_BEC=self.include_long_range,
             data_std=self.data_std,
             data_mean=self.data_mean,
             les_dl=les_params['les_dl'],
