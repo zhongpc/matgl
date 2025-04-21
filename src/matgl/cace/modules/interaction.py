@@ -186,6 +186,8 @@ class MessageBchi(nn.Module):
         self.shared_channels = shared_channels
         self.shared_l = shared_l
 
+        print(f"n_in: {self.n_in}, n_out: {n_out}, n_hidden: {self.n_hidden}, n_layers: {self.n_layers}, activation: {self.activation}, residual: {self.residual}, use_batchnorm: {self.use_batchnorm}")
+
         if shared_channels:
             self.nc = 1
 
@@ -206,6 +208,8 @@ class MessageBchi(nn.Module):
             n_out = 1
 
         if n_in is not None and n_out is not None:
+            print(f"n_in: {self.n_in}, n_out: {n_out}, n_hidden: {self.n_hidden}, n_layers: {self.n_layers}, activation: {self.activation}, residual: {self.residual}, use_batchnorm: {self.use_batchnorm}")
+
             self.hnet = build_mlp(
                 n_in=self.n_in,
                 n_out=n_out,
