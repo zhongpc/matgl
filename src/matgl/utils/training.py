@@ -486,7 +486,9 @@ class PotentialLightningModule(MatglLightningModuleMixin, pl.LightningModule):
             valid_labels, valid_preds = list(labels), list(preds)
             valid_num_atoms = num_atoms
 
-        e_loss = self.loss(valid_labels[0] / valid_num_atoms, valid_preds[0] / valid_num_atoms, **self.loss_params)
+        # e_loss = self.loss(valid_labels[0] / valid_num_atoms, valid_preds[0] / valid_num_atoms, **self.loss_params)
+        e_loss = self.loss(valid_labels[0] , valid_preds[0], **self.loss_params)
+
         f_loss = self.loss(valid_labels[1], valid_preds[1], **self.loss_params)
 
         e_mae = self.mae(valid_labels[0] / valid_num_atoms, valid_preds[0] / valid_num_atoms)
