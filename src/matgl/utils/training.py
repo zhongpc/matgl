@@ -286,7 +286,7 @@ class PotentialLightningModule(MatglLightningModuleMixin, pl.LightningModule):
         allow_missing_labels: bool = False,
         magmom_target: Literal["absolute", "symbreak"] | None = "absolute",
         include_long_range: bool = False,
-        les_params: dict | None = {'les_dl': 2.0, 'les_sigma': 1.0},
+        les_params: dict | None = {'les_dl': 1.0, 'les_sigma': 1.0},
         **kwargs,
     ):
         """
