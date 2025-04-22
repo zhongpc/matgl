@@ -20,15 +20,14 @@ from matgl.graph.compute import (
     compute_pair_vector_and_distance,
 )
 
-from matgl.layers import MLP, WeightedReadOut
-
+from matgl.layers._readout import MLPReadOut, WeightedReadOut
 
 if TYPE_CHECKING:
     from matgl.graph.converters import GraphConverter
 
 logger = logging.getLogger(__file__)
 
-
+from matgl.cace.modules.blocks import build_mlp
 from matgl.cace.modules import (
     NodeEncoder, 
     NodeEmbedding, 
@@ -83,6 +82,7 @@ class CACE_LR(nn.Module):
         keep_node_features_A: bool = False,
         forward_features: List[str] = [],
         num_targets: int = 1,
+        readout_type: Literal["weighted_mlp", "mlp"] = "mlp",
         atomwise_hidden: List[int] = [64, 32],
         latent_charge_hidden: List[int] = [64, 32],
     ):
@@ -118,6 +118,7 @@ class CACE_LR(nn.Module):
         self.mp_norm_factor = 1.0/(avg_num_neighbors)**0.5 # normalization factor for message passing
         self.keep_node_features_A = keep_node_features_A
         self.forward_features = forward_features
+        self.readout_type = readout_type
 
         # layers
         if node_encoder is None:
@@ -208,18 +209,33 @@ class CACE_LR(nn.Module):
         
         
         
-        
-        self.final_layer = WeightedReadOut(
-                in_feats=flat_dim,
-                dims=atomwise_hidden,
-                num_targets=num_targets,  # type: ignore
-            )
+        if self.readout_type == "weighted_mlp": 
+            # Warning: This can introduce a large number of parameters
+            self.final_layer = WeightedReadOut(
+                    in_feats=flat_dim,
+                    dims=atomwise_hidden,
+                    num_targets=num_targets,  # type: ignore
+                )
 
-        self.latent_charge_readout = WeightedReadOut(
-                in_feats=flat_dim,
-                dims=latent_charge_hidden,
-                num_targets=num_targets,  # type: ignore
-            )
+            self.latent_charge_readout = WeightedReadOut(
+                    in_feats=flat_dim,
+                    dims=latent_charge_hidden,
+                    num_targets=num_targets,  # type: ignore
+                )
+            
+        elif self.readout_type == "mlp":
+            self.final_layer = MLPReadOut(
+                    in_feats=flat_dim,
+                    dims=atomwise_hidden,
+                    num_targets=num_targets,  # type: ignore
+                )
+
+            self.latent_charge_readout = MLPReadOut(
+                    in_feats=flat_dim,
+                    dims=latent_charge_hidden,
+                    num_targets=num_targets,  # type: ignore
+                )
+        
         
         # self.device = device
 

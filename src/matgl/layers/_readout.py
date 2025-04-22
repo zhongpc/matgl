@@ -79,6 +79,33 @@ class ReduceReadOut(nn.Module):
         return dgl.readout_edges(g, feat="edge_feat", op=self.op)
 
 
+class MLPReadOut(nn.Module):
+    """Feed node features into Gated MLP as readout for atomic properties."""
+
+    def __init__(self, in_feats: int, dims: Sequence[int], num_targets: int):
+        """
+        Args:
+            in_feats: input features (nodes)
+            dims: NN architecture for Gated MLP
+            num_targets: number of target properties.
+        """
+        super().__init__()
+        self.in_feats = in_feats
+        self.dims = [in_feats, *dims, num_targets]
+        self.mlp = MLP(dims=self.dims, activation=nn.SiLU(), activate_last=False)
+
+    def forward(self, g: dgl.DGLGraph):
+        """Args:
+            g: DGL graph.
+
+        Returns:
+            atomic_properties: torch.Tensor.
+        """
+        atomic_properties = self.mlp(g.ndata["node_feat"])
+        return atomic_properties
+
+
+
 class WeightedReadOut(nn.Module):
     """Feed node features into Gated MLP as readout for atomic properties."""
 
