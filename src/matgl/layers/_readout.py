@@ -132,6 +132,32 @@ class WeightedReadOut(nn.Module):
         return atomic_properties
 
 
+class WeightedReadOut_norepeat(nn.Module):
+    """Feed node features into Gated MLP as readout for atomic properties."""
+
+    def __init__(self, in_feats: int, dims: Sequence[int], num_targets: int):
+        """
+        Args:
+            in_feats: input features (nodes)
+            dims: NN architecture for Gated MLP
+            num_targets: number of target properties.
+        """
+        super().__init__()
+        self.in_feats = in_feats
+        self.dims = [*dims, num_targets]
+        self.gated = GatedMLP(in_feats=in_feats, dims=self.dims, activate_last=False)
+
+    def forward(self, g: dgl.DGLGraph):
+        """Args:
+            g: DGL graph.
+
+        Returns:
+            atomic_properties: torch.Tensor.
+        """
+        atomic_properties = self.gated(g.ndata["node_feat"])
+        return atomic_properties
+
+
 class WeightedAtomReadOut(nn.Module):
     """Weighted atom readout for graph properties."""
 

@@ -20,7 +20,7 @@ from matgl.graph.compute import (
     compute_pair_vector_and_distance,
 )
 
-from matgl.layers._readout import MLPReadOut, WeightedReadOut
+from matgl.layers._readout import MLPReadOut, WeightedReadOut, WeightedReadOut_norepeat
 
 if TYPE_CHECKING:
     from matgl.graph.converters import GraphConverter
@@ -211,24 +211,36 @@ class CACE_LR(nn.Module):
         
         if self.readout_type == "weighted_mlp": 
             # Warning: This can introduce a large number of parameters
-            self.final_layer = nn.Sequential(
-                nn.Linear(flat_dim, atomwise_hidden[0] * 2), nn.SiLU(),
-                WeightedReadOut(
-                    in_feats=atomwise_hidden[0] * 2,
-                    dims=atomwise_hidden,
-                    num_targets=num_targets,  # type: ignore
-                ),
-                
+            self.final_layer = WeightedReadOut_norepeat(
+                in_feats=flat_dim,
+                dims=atomwise_hidden,
+                num_targets=num_targets,  # type: ignore
             )
 
-            self.latent_charge_readout = nn.Sequential(
-                nn.Linear(flat_dim, atomwise_hidden[0] * 2), nn.SiLU(),
-                WeightedReadOut(
-                    in_feats=atomwise_hidden[0] * 2,
-                    dims=atomwise_hidden,
-                    num_targets=num_targets,  # type: ignore
-                ),
+            self.latent_charge_readout = WeightedReadOut_norepeat(
+                in_feats=flat_dim,
+                dims=latent_charge_hidden,
+                num_targets=num_targets,  # type: ignore
             )
+            
+            # nn.Sequential(
+            #     nn.Linear(flat_dim, atomwise_hidden[0] * 2), nn.SiLU(),
+            #     WeightedReadOut(
+            #         in_feats=atomwise_hidden[0] * 2,
+            #         dims=atomwise_hidden,
+            #         num_targets=num_targets,  # type: ignore
+            #     ),
+                
+            # )
+
+            # self.latent_charge_readout = nn.Sequential(
+            #     nn.Linear(flat_dim, atomwise_hidden[0] * 2), nn.SiLU(),
+            #     WeightedReadOut(
+            #         in_feats=atomwise_hidden[0] * 2,
+            #         dims=atomwise_hidden,
+            #         num_targets=num_targets,  # type: ignore
+            #     ),
+            # )
             
         elif self.readout_type == "mlp":
             self.final_layer = MLPReadOut(
