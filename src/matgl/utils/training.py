@@ -486,8 +486,8 @@ class PotentialLightningModule(MatglLightningModuleMixin, pl.LightningModule):
             valid_labels, valid_preds = list(labels), list(preds)
             valid_num_atoms = num_atoms
 
-        # e_loss = self.loss(valid_labels[0] / valid_num_atoms, valid_preds[0] / valid_num_atoms, **self.loss_params)
-        e_loss = self.loss(valid_labels[0] , valid_preds[0], **self.loss_params)
+        e_loss = self.loss(valid_labels[0] / valid_num_atoms, valid_preds[0] / valid_num_atoms, **self.loss_params)
+        # e_loss = self.loss(valid_labels[0] , valid_preds[0], **self.loss_params)
 
         f_loss = self.loss(valid_labels[1], valid_preds[1], **self.loss_params)
 
@@ -540,6 +540,17 @@ class PotentialLightningModule(MatglLightningModuleMixin, pl.LightningModule):
             "Stress_RMSE": s_rmse,
             "Magmom_RMSE": m_rmse,
         }
+    
+    # def configure_optimizers(self):
+    #     return {
+    #         "optimizer": self.optimizer,
+    #         "lr_scheduler": {
+    #             "scheduler": self.scheduler,
+    #             "monitor": "val_Total_Loss",
+    #             "interval": "epoch",
+    #             "frequency": 1
+    #         }
+    #     }
 
 
 def xavier_init(model: nn.Module, gain: float = 1.0, distribution: Literal["uniform", "normal"] = "uniform") -> None:
