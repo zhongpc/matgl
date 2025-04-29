@@ -39,6 +39,7 @@ class Potential(nn.Module, IOMixIn):
         les_sigma: float = 1.0,
         les_dl: float = 1.0,
         les_remove_mean: bool = True,
+        les_norm_factor: float = 90.0474,
         les_epsilon_factor: float = 1.0,
         zbl_trainable: bool = False,
         debug_mode: bool = False,
@@ -72,6 +73,7 @@ class Potential(nn.Module, IOMixIn):
         self.calc_repuls = calc_repuls
         self.les_sigma = les_sigma
         self.les_dl = les_dl
+        self.les_norm_factor = les_norm_factor
         self.les_remove_mean = les_remove_mean
         self.les_epsilon_factor = les_epsilon_factor
         self.return_charge = return_charge
@@ -100,6 +102,7 @@ class Potential(nn.Module, IOMixIn):
             self.ewald = Ewald(
                 sigma=self.les_sigma,  # width of the Gaussian on each atom
                 dl=self.les_dl,  # grid resolution
+                norm_factor= self.les_norm_factor,
             )
 
             self.bec = BEC(
@@ -167,6 +170,7 @@ class Potential(nn.Module, IOMixIn):
             
             ewald_E = torch.squeeze(ewald_E)
             # print("ewald_E:", ewald_E)
+
             # print("ewald_E shape:", ewald_E.shape)
             # print("total_energies shape:", total_energies.shape)
 

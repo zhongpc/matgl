@@ -1,8 +1,8 @@
 """Implementation of CACE model.
 
 A Cartesian based equivariant GNN model. For more details on CACE,
-please refer to::
-
+please refer to::  
+[1] B. Cheng, Npj Comput. Mater. 10, 1 (2024).
 
 """
 
@@ -223,24 +223,6 @@ class CACE_LR(nn.Module):
                 num_targets=num_targets,  # type: ignore
             )
             
-            # nn.Sequential(
-            #     nn.Linear(flat_dim, atomwise_hidden[0] * 2), nn.SiLU(),
-            #     WeightedReadOut(
-            #         in_feats=atomwise_hidden[0] * 2,
-            #         dims=atomwise_hidden,
-            #         num_targets=num_targets,  # type: ignore
-            #     ),
-                
-            # )
-
-            # self.latent_charge_readout = nn.Sequential(
-            #     nn.Linear(flat_dim, atomwise_hidden[0] * 2), nn.SiLU(),
-            #     WeightedReadOut(
-            #         in_feats=atomwise_hidden[0] * 2,
-            #         dims=atomwise_hidden,
-            #         num_targets=num_targets,  # type: ignore
-            #     ),
-            # )
             
         elif self.readout_type == "mlp":
             self.final_layer = MLPReadOut(
@@ -254,6 +236,9 @@ class CACE_LR(nn.Module):
                     dims=latent_charge_hidden,
                     num_targets=num_targets,  # type: ignore
                 )
+            
+        else:
+            raise ValueError(f"Invalid readout type: {self.readout_type}")
         
         
         # self.device = device
