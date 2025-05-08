@@ -20,7 +20,7 @@ from matgl.graph.compute import (
     compute_pair_vector_and_distance,
 )
 
-from matgl.layers._readout import MLPReadOut, WeightedReadOut, WeightedReadOut_norepeat
+from matgl.layers._readout import MLPReadOut, WeightedReadOut, WeightedReadOut_norepeat, LinearReadOut
 
 if TYPE_CHECKING:
     from matgl.graph.converters import GraphConverter
@@ -51,8 +51,9 @@ from matgl.cace.tools import elementwise_multiply_3tensors, scatter_sum
 
 
 from pymatgen.core.periodic_table import Element
-DEFAULT_ELEMENTS = tuple(el.symbol for el in Element if el.Z < 95)
-DEFAULT_ATOMIC_NUMBERS = tuple(el.Z for el in Element if el.Z < 95)
+
+DEFAULT_ELEMENTS = tuple(el.symbol for el in Element if el.Z < 95) # not 89 as the matgl default
+DEFAULT_ATOMIC_NUMBERS = tuple(el.Z for el in Element if el.Z < 95) # not 89 as the matgl default
 
 
 class CACE_LR(nn.Module):
@@ -176,6 +177,7 @@ class CACE_LR(nn.Module):
         self.num_message_passing = num_message_passing
         n_angular_sym = 1 + sum([len(self.symmetrizer.vec_dict_allnu[nu]) for nu in range(2, self.max_nu + 1)])
         flat_dim = self.n_radial_basis * n_angular_sym * self.n_edge_channels * (self.num_message_passing + 1)
+        node_feat_dim = self.n_radial_basis * n_angular_sym * self.n_edge_channels
 
         self.message_passing_list = nn.ModuleList([
             nn.ModuleList([
@@ -207,7 +209,8 @@ class CACE_LR(nn.Module):
             ])
         
         
-        
+        self.linear_energy = LinearReadOut(in_feats=node_feat_dim, num_targets=num_targets, key="node_feat_ACE")
+        self.linear_charge = LinearReadOut(in_feats=node_feat_dim, num_targets=num_targets, key="node_feat_ACE")
         
         if self.readout_type == "weighted_mlp": 
             # Warning: This can introduce a large number of parameters
@@ -240,9 +243,7 @@ class CACE_LR(nn.Module):
         else:
             raise ValueError(f"Invalid readout type: {self.readout_type}")
         
-        
-        # self.device = device
-
+    
     def forward(
         self, 
         g: dgl.DGLGraph, state_attr: torch.Tensor | None = None, **kwargs
@@ -313,6 +314,17 @@ class CACE_LR(nn.Module):
         node_feat_B = self.symmetrizer(node_attr=node_feat_A)
         node_feats_list.append(node_feat_B)
 
+        # print("node_feat_B", node_feat_B.shape)
+
+        node_feat_B_ACE = node_feat_B.reshape(node_feat_B.shape[0], -1) 
+
+        # print("node_feat_B_ACE", node_feat_B_ACE.shape)
+
+        g.ndata["node_feat_ACE"] = node_feat_B_ACE
+
+        # node_energy_ACE = self.linear_energy(node_feat_B_ACE)
+        # node_feat_B = self.linear_charge(node_feat_B)
+
         # message passing
         for nm, mp_Ar, mp_Bchi in self.message_passing_list: 
             if nm is not None:
@@ -368,8 +380,14 @@ class CACE_LR(nn.Module):
         # print("After reshape", node_feats_out.shape)
         g.ndata["node_feat"] = node_feats_out
 
-        g.ndata["latent_charge"] =  self.latent_charge_readout(g)
-        g.ndata["atomic_properties"] = self.final_layer(g)
+        # print("self.latent_charge_readout(g)", self.latent_charge_readout(g).shape)
+        # print("self.final_layer(g)", self.final_layer(g).shape)
+
+        # print("self.linear_charge(g)", self.linear_charge(g).shape)
+        # print("self.linear_energy(g)", self.linear_energy(g).shape)
+
+        g.ndata["latent_charge"] =  self.latent_charge_readout(g) + self.linear_charge(g)
+        g.ndata["atomic_properties"] = self.final_layer(g) + self.linear_energy(g)
 
         
         # print(node_feats_out)
