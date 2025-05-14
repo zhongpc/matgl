@@ -287,6 +287,7 @@ class PotentialLightningModule(MatglLightningModuleMixin, pl.LightningModule):
         magmom_target: Literal["absolute", "symbreak"] | None = "absolute",
         include_long_range: bool = False,
         les_params: dict | None = {'les_dl': 1.0, 'les_sigma': 1.0, 'les_norm_factor': 90.0474},
+        per_atom_energy_loss: bool = True,
         **kwargs,
     ):
         """
@@ -337,6 +338,7 @@ class PotentialLightningModule(MatglLightningModuleMixin, pl.LightningModule):
         self.decay_alpha = decay_alpha
         self.include_line_graph = include_line_graph
         self.include_long_range = include_long_range
+        self.per_atom_energy_loss = per_atom_energy_loss
 
         self.model = Potential(
             model=model,
@@ -487,8 +489,11 @@ class PotentialLightningModule(MatglLightningModuleMixin, pl.LightningModule):
             valid_labels, valid_preds = list(labels), list(preds)
             valid_num_atoms = num_atoms
 
-        e_loss = self.loss(valid_labels[0] / valid_num_atoms, valid_preds[0] / valid_num_atoms, **self.loss_params)
-        # e_loss = self.loss(valid_labels[0] , valid_preds[0], **self.loss_params)
+
+        if self.per_atom_energy_loss:
+            e_loss = self.loss(valid_labels[0] / valid_num_atoms, valid_preds[0] / valid_num_atoms, **self.loss_params)
+        else:
+            e_loss = self.loss(valid_labels[0] , valid_preds[0], **self.loss_params)
 
         f_loss = self.loss(valid_labels[1], valid_preds[1], **self.loss_params)
 
