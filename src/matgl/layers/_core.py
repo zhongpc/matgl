@@ -26,6 +26,7 @@ class MLP(nn.Module):
         activation: Callable[[Tensor], Tensor] | None = None,
         activate_last: bool = False,
         bias_last: bool = True,
+        add_linear: bool = True,
     ) -> None:
         """:param dims: Dimensions of each layer of MLP.
         :param activation: Activation function.
@@ -37,16 +38,12 @@ class MLP(nn.Module):
         self.layers = ModuleList()
 
         for i, (in_dim, out_dim) in enumerate(itertools.pairwise(dims)):
-            if i < self._depth - 1:
-                self.layers.append(Linear(in_dim, out_dim, bias=True))
+            self.layers.append(Linear(in_dim, out_dim, bias=True))
+            self.layers.append(activation)  # type: ignore
 
-                if activation is not None:
-                    self.layers.append(activation)  # type: ignore
-            else:
-                self.layers.append(Linear(in_dim, out_dim, bias=bias_last))
-
-                if activation is not None and activate_last:
-                    self.layers.append(activation)  # type: ignore
+        if add_linear:
+            self.layers.append(Linear(dims[-1], dims[-1], bias=True))
+           
 
     def __repr__(self):
         dims = []
