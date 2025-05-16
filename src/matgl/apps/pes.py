@@ -188,10 +188,6 @@ class Potential(nn.Module, IOMixIn):
         if self.calc_repuls:
             total_energies += self.repuls(self.model.element_types, g)
 
-        if self.element_refs is not None:
-            property_offset = torch.squeeze(self.element_refs(g))
-            total_energies += property_offset
-
         forces = torch.zeros(1)
         stresses = torch.zeros(1)
         hessian = torch.zeros(1)
@@ -229,6 +225,12 @@ class Potential(nn.Module, IOMixIn):
             stresses = torch.cat(sts)  # type:ignore[call-overload]
 
 
+        
+        # add the property offset after gradients are computed
+        if self.element_refs is not None:
+            property_offset = torch.squeeze(self.element_refs(g))
+            total_energies += property_offset
+
         if self.debug_mode:
             return total_energies, grads[0], grads[1]
 
@@ -249,5 +251,4 @@ class Potential(nn.Module, IOMixIn):
         if self.calc_magmom:
             return total_energies, forces, stresses, hessian, g.ndata["magmom"]
         
-    
         return total_energies, forces, stresses, hessian
