@@ -649,17 +649,24 @@ class CHGNet_LR(MatGLModel):
             nn.Linear(dim_atom_embedding, num_site_targets) if num_site_targets > 0 else lambda x: None
         )
 
-        self.latent_charge_readout = (
-            nn.Linear(dim_atom_embedding, num_site_targets) if num_site_targets > 0 else lambda x: None
-        )
+        # self.latent_charge_readout = (
+        #     nn.Linear(dim_atom_embedding, num_site_targets) if num_site_targets > 0 else lambda x: None
+        # )
 
         input_dim = dim_atom_embedding if readout_field == "node_feat" else dim_bond_embedding
         if final_mlp_type == "mlp":
             self.final_layer = MLP_norm(
                 dims=[input_dim, *final_hidden_dims, num_targets], activation=activation, activate_last=False
             )
+            self.latent_charge_readout = MLP_norm(
+                dims=[input_dim, *final_hidden_dims, num_targets], activation=activation, activate_last=False
+            )
+
         elif final_mlp_type == "gated":
             self.final_layer = GatedMLP_norm(  # type: ignore[assignment]
+                in_feats=input_dim, dims=[*final_hidden_dims, num_targets], activate_last=False
+            )
+            self.latent_charge_readout = GatedMLP_norm(  # type: ignore[assignment]
                 in_feats=input_dim, dims=[*final_hidden_dims, num_targets], activate_last=False
             )
         else:
