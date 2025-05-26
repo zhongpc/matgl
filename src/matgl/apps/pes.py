@@ -41,6 +41,7 @@ class Potential(nn.Module, IOMixIn):
         les_remove_mean: bool = True,
         les_norm_factor: float = 90.0474,
         les_epsilon_factor: float = 1.0,
+        les_pbc: bool = True,
         zbl_trainable: bool = False,
         debug_mode: bool = False,
         return_charge: bool = False,
@@ -76,6 +77,7 @@ class Potential(nn.Module, IOMixIn):
         self.les_norm_factor = les_norm_factor
         self.les_remove_mean = les_remove_mean
         self.les_epsilon_factor = les_epsilon_factor
+        self.les_pbc = les_pbc
         self.return_charge = return_charge
 
         if calc_repuls:
@@ -162,12 +164,20 @@ class Potential(nn.Module, IOMixIn):
 
         # print("batch:", batch)
         if self.calc_BEC:
-            ewald_E = self.ewald(q = g.ndata["latent_charge"], 
-                       r = g.ndata["pos"], 
-                       cell = lattice, 
-                       batch = g.ndata["batch"]
-                       )
-            
+            if self.les_pbc:
+                ewald_E = self.ewald(q = g.ndata["latent_charge"], 
+                            r = g.ndata["pos"], 
+                            cell = lattice, 
+                            batch = g.ndata["batch"]
+                            )
+            else:
+                # print("real space Ewald")
+                ewald_E = self.ewald(q = g.ndata["latent_charge"], 
+                            r = g.ndata["pos"], 
+                            cell = None, 
+                            batch = g.ndata["batch"]
+                            )
+
             # print("ewald_E shape:", ewald_E.shape)
             
             ewald_E = torch.squeeze(ewald_E)

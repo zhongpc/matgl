@@ -286,7 +286,10 @@ class PotentialLightningModule(MatglLightningModuleMixin, pl.LightningModule):
         allow_missing_labels: bool = False,
         magmom_target: Literal["absolute", "symbreak"] | None = "absolute",
         include_long_range: bool = False,
-        les_params: dict | None = {'les_dl': 1.0, 'les_sigma': 1.0, 'les_norm_factor': 90.0474},
+        les_params: dict | None = {'les_dl': 1.0, 
+                                   'les_sigma': 1.0, 
+                                   'les_norm_factor': 90.0474,
+                                   'les_pbc': True},
         per_atom_energy_loss: bool = True,
         **kwargs,
     ):
@@ -350,7 +353,8 @@ class PotentialLightningModule(MatglLightningModuleMixin, pl.LightningModule):
             data_mean=self.data_mean,
             les_dl=les_params['les_dl'],
             les_sigma=les_params['les_sigma'],
-            les_norm_factor = les_params['les_norm_factor']
+            les_norm_factor = les_params['les_norm_factor'],
+            les_pbc = les_params['les_pbc']
         )
         if loss == "mse_loss":
             self.loss = F.mse_loss
