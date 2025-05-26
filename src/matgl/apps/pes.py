@@ -131,13 +131,20 @@ class Potential(nn.Module, IOMixIn):
         st = lat.new_zeros([g.batch_size, 3, 3])
         if self.calc_stresses:
             st.requires_grad_(True)
-        lattice = lat @ (torch.eye(3, device=lat.device) + st)
-        g.ndata["batch"] = torch.repeat_interleave(torch.arange(g.batch_size, device=lat.device), g.batch_num_nodes(), dim=0)
-        g.edata["lattice"] = torch.repeat_interleave(lattice, g.batch_num_edges(), dim=0)
-        g.edata["pbc_offshift"] = (g.edata["pbc_offset"].unsqueeze(dim=-1) * g.edata["lattice"]).sum(dim=1)
-        g.ndata["pos"] = (
-            g.ndata["frac_coords"].unsqueeze(dim=-1) * torch.repeat_interleave(lattice, g.batch_num_nodes(), dim=0)
-        ).sum(dim=1)
+            lattice = lat @ (torch.eye(3, device=lat.device) + st)
+            g.ndata["batch"] = torch.repeat_interleave(torch.arange(g.batch_size, device=lat.device), g.batch_num_nodes(), dim=0)
+            g.edata["lattice"] = torch.repeat_interleave(lattice, g.batch_num_edges(), dim=0)
+            g.edata["pbc_offshift"] = (g.edata["pbc_offset"].unsqueeze(dim=-1) * g.edata["lattice"]).sum(dim=1)
+            g.ndata["pos"] = (
+                g.ndata["frac_coords"].unsqueeze(dim=-1) * torch.repeat_interleave(lattice, g.batch_num_nodes(), dim=0)
+            ).sum(dim=1)
+        
+        else:
+            lattice = lat @ (torch.eye(3, device=lat.device) + st)
+            g.ndata["batch"] = torch.repeat_interleave(torch.arange(g.batch_size, device=lat.device), g.batch_num_nodes(), dim=0)
+            g.edata["lattice"] = torch.repeat_interleave(lattice, g.batch_num_edges(), dim=0)
+            g.edata["pbc_offshift"] = (g.edata["pbc_offset"].unsqueeze(dim=-1) * g.edata["lattice"]).sum(dim=1)
+            # pass # lattice = lat
         
         ####### process the forces#######
         if self.calc_forces:

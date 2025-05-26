@@ -73,7 +73,7 @@ class Molecule2Graph(GraphConverter):
             adj.row,
             adj.col,
             np.zeros((len(adj.row), 3)),
-            np.expand_dims(np.identity(3), axis=0),
+            np.expand_dims(np.zeros((3, 3)), axis=0), # original: np.expand_dims(np.identity(3), axis=0),
             element_types,
             R,
         )
