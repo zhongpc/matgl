@@ -248,12 +248,20 @@ class Potential(nn.Module, IOMixIn):
 
 
         if self.return_charge:
-            bec = self.bec(
-                q = g.ndata["latent_charge"], 
-                r = g.ndata["pos"], 
-                cell = lattice,
-                batch = g.ndata["batch"]
-            )
+            if self.les_pbc:
+                bec = self.bec(
+                    q = g.ndata["latent_charge"], 
+                    r = g.ndata["pos"], 
+                    cell = lattice,
+                    batch = g.ndata["batch"]
+                )
+            else:
+                bec = self.bec(
+                    q = g.ndata["latent_charge"], 
+                    r = g.ndata["pos"], 
+                    cell = None,
+                    batch = g.ndata["batch"]
+                )
             if self.calc_magmom:
                 return total_energies, forces, stresses, hessian, g.ndata["latent_charge"], bec, g.ndata["magmom"]
             else:
