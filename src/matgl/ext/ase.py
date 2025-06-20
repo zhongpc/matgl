@@ -32,7 +32,7 @@ from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.optimization.neighbors import find_points_in_spheres
 
 from matgl.graph.converters import GraphConverter
-
+from matgl.graph.compute import create_line_graph
 if TYPE_CHECKING:
     from typing import Any
 
@@ -238,6 +238,109 @@ class M3GNetCalculator(PESCalculator):
             **kwargs: Kwargs pass through to super().__init__().
         """
         super().__init__(potential=potential, state_attr=state_attr, stress_weight=stress_weight, **kwargs)
+
+
+
+
+class PESCalculator_with_line_graph(Calculator):
+    """Potential calculator for ASE."""
+
+    implemented_properties = ["energy", "free_energy", "forces", "stress", "hessian", "magmoms"]  # noqa:RUF012
+
+    def __init__(
+        self,
+        potential: Potential,
+        state_attr: torch.Tensor | None = None,
+        stress_unit: Literal["eV/A3", "GPa"] = "GPa",
+        stress_weight: float = 1.0,
+        use_voigt: bool = False,
+        threebody_cutoff: float = 3.0,
+        directed_graph: bool = True, # True for CHGNet, False for M3GNet
+        **kwargs,
+    ):
+        """
+        Init PESCalculator with a Potential from matgl.
+
+        Args:
+            potential (Potential): matgl.apps.pes.Potential
+            state_attr (tensor): State attribute
+            compute_stress (bool): whether to calculate the stress
+            stress_unit (str): stress unit. Default: "GPa"
+            stress_weight (float): conversion factor from GPa to eV/A^3, if it is set to 1.0, the unit is in GPa
+            use_voigt (bool): whether the voigt notation is used for stress output
+            **kwargs: Kwargs pass through to super().__init__().
+        """
+        super().__init__(**kwargs)
+        self.potential = potential
+        self.compute_stress = potential.calc_stresses
+        self.compute_hessian = potential.calc_hessian
+        self.compute_magmom = potential.calc_magmom
+        self.threebody_cutoff = threebody_cutoff
+        self.directed_graph = directed_graph
+
+        # Handle stress unit conversion
+        if stress_unit == "eV/A3":
+            conversion_factor = units.GPa / (units.eV / units.Angstrom**3)  # Conversion factor from GPa to eV/A^3
+        elif stress_unit == "GPa":
+            conversion_factor = 1.0  # No conversion needed if stress is already in GPa
+        else:
+            raise ValueError(f"Unsupported stress_unit: {stress_unit}. Must be 'GPa' or 'eV/A3'.")
+
+        self.stress_weight = stress_weight * conversion_factor
+        self.state_attr = state_attr
+        self.element_types = potential.model.element_types  # type: ignore
+        self.cutoff = potential.model.cutoff
+        self.use_voigt = use_voigt
+
+    def calculate(  # type:ignore[override]
+        self,
+        atoms: Atoms,
+        properties: list | None = None,
+        system_changes: list | None = None,
+    ):
+        """
+        Perform calculation for an input Atoms.
+
+        Args:
+            atoms (ase.Atoms): ase Atoms object
+            properties (list): list of properties to calculate
+            system_changes (list): monitor which properties of atoms were
+                changed for new calculation. If not, the previous calculation
+                results will be loaded.
+        """
+        properties = properties or ["energy"]
+        system_changes = system_changes or all_changes
+        super().calculate(atoms=atoms, properties=properties, system_changes=system_changes)
+        graph, lattice, state_attr_default = Atoms2Graph(self.element_types, self.cutoff).get_graph(atoms)
+        # type: ignore
+
+        line_graph = create_line_graph(graph, self.threebody_cutoff, directed= self.directed_graph)
+        for name in ["bond_vec", "bond_dist", "pbc_offset"]:
+            line_graph.ndata.pop(name)
+
+        if self.state_attr is not None:
+            calc_result = self.potential(graph, lattice, line_graph, self.state_attr)
+        else:
+            calc_result = self.potential(graph, lattice, line_graph, state_attr_default)
+        self.results.update(
+            energy=calc_result[0].detach().cpu().numpy().item(),
+            free_energy=calc_result[0].detach().cpu().numpy().item(),
+            forces=calc_result[1].detach().cpu().numpy(),
+        )
+        if self.compute_stress:
+            stresses_np = (
+                full_3x3_to_voigt_6_stress(calc_result[2].detach().cpu().numpy())
+                if self.use_voigt
+                else calc_result[2].detach().cpu().numpy()
+            )
+            self.results.update(stress=stresses_np * self.stress_weight)
+        if self.compute_hessian:
+            self.results.update(hessian=calc_result[3].detach().cpu().numpy())
+        if self.compute_magmom:
+            self.results.update(magmoms=calc_result[4].detach().cpu().numpy())
+
+
+
 
 
 class Relaxer:

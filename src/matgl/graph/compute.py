@@ -227,7 +227,8 @@ def _create_directed_line_graph(graph: dgl.DGLGraph, threebody_cutoff: float) ->
     Returns:
         line_graph: DGL line graph of pruned graph to three body cutoff
     """
-    with torch.no_grad():
+    # with torch.no_grad():
+    if True:
         pg = prune_edges_by_features(graph, feat_name="bond_dist", condition=lambda x: torch.gt(x, threebody_cutoff))
         src_indices, dst_indices = pg.edges()
         images = pg.edata["pbc_offset"]
